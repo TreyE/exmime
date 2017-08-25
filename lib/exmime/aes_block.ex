@@ -10,10 +10,7 @@ defmodule Exmime.AesBlock do
   end
 
   def stream_encrypt(key, ivec, data) do
-    stream = aes_256_stream(key, ivec, data)
-    Enum.reduce(stream, <<>>, fn(d, acc) ->
-      acc <> d
-    end)
+    aes_256_stream(key, ivec, data)
   end
 
   def encrypted_content_info(key, ivec, data) do
