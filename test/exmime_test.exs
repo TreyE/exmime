@@ -4,19 +4,6 @@ defmodule ExmimeTest do
 
   require Exmime.Records
 
-  test "examine example structure" do
-    {:ok, f} = :file.open("ENCODE_FILE", [:binary, :read])
-    {:ok, data} = :file.read(f, 82174)
-    [entry] = :public_key.pem_decode(data)
-    #    IO.inspect entry
-    pem_entry = :public_key.pem_entry_decode(entry)
-    IO.inspect pem_entry
-    #    IO.inspect Exmime.Records.'ContentInfo'(pem_entry, :content)
-    re_encoded_pem = :public_key.pem_encode([entry])
-    re_encoded_rec = Exmime.PemEncoder.encode_content_info(pem_entry)
-    #    IO.inspect re_encoded_rec
-  end
-
   test "content info for aes cbc 256 rsa" do
     {:ok, f} = :file.open("example.com.crt", [:binary, :read])
     {:ok, f_data} = :file.read(f, 82174)
