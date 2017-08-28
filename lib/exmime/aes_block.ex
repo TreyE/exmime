@@ -5,6 +5,10 @@ defmodule Exmime.AesBlock do
     defstruct [:key, :last_ciphertext, :remaining_data]
   end
 
+  def generate_AES_parameters(key_size) do
+    {:crypto.strong_rand_bytes(Kernel.trunc(key_size/8)), :crypto.strong_rand_bytes(16)}
+  end
+
   def block_encrypt(key, ivec, data) do
     :crypto.block_encrypt(:aes_cbc, key, ivec, data)
   end

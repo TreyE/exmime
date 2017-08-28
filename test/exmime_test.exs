@@ -15,10 +15,8 @@ defmodule ExmimeTest do
       modulus: modulus,
       publicExponent: public_exp
     )
-    aes_key = :crypto.strong_rand_bytes(16)
-    aes_iv = :crypto.strong_rand_bytes(16)
     data = "A TEST MESSAGE"
-    content_info = Exmime.single_recipient_rsa_aes_256_cbc(cert_serial, rsa_pubkey_record, aes_key, aes_iv, data)
+    content_info = Exmime.single_recipient_rsa_aes_cbc(cert_serial, rsa_pubkey_record, 256, data)
     IO.inspect content_info
     encoded_content = Exmime.PemEncoder.encode_content_info(content_info)
     IO.puts :public_key.pem_encode([encoded_content])
