@@ -41,51 +41,8 @@ defmodule Exmime.Certificate do
     [m, e] = decode_public_key_asn1(pkey)
   end
 
-  defp decode_public_key_asn1(<<48::size(8), rest::binary>>) do
-    decode_asn1_sequence(rest)
-  end
-
-  defp decode_asn1_sequence(<<len::integer-size(8), rest::binary>>) do
-    case len > 127 do
-      true ->
-        {len_val, remaining_data} = read_len_bytes(rest, len - 128)
-        parse_sequence_items(len_val, remaining_data)
-      _ -> parse_sequence_items(len, rest)
-    end
-  end
-
-  defp decode_asn1_primitive(<<type::unsigned-integer-size(8), len::unsigned-integer-size(8), rest::binary>>) do
-    case len > 127 do
-      true ->
-        {len_val, remaining_data} = read_len_bytes(rest, len - 128)
-        parse_primitive(type, len_val, remaining_data)
-      _ -> parse_primitive(type, len, rest)
-    end
-  end
-
-  defp parse_primitive(2, length, data) do
-    bit_count = length * 8
-    <<value::signed-big-integer-size(bit_count), rest::binary>> = data
-    {rest, value}
-  end
-
-  defp read_len_bytes(data, len_byte_count) do
-    bit_count = len_byte_count * 8
-    <<len_val::unsigned-big-integer-size(bit_count), rest::binary>> = data
-    {len_val, rest}
-  end
-
-  defp parse_sequence_items(len, data) do
-    <<sequence_binary::binary-size(len), _::binary>> = data
-    read_sequence_items(sequence_binary, [])
-  end
-
-  defp read_sequence_items(<<>>, list) do
-    Enum.reverse(list)
-  end
-
-  defp read_sequence_items(sequence_data, list) do
-    {rest, item} = decode_asn1_primitive(sequence_data)
-    read_sequence_items(rest, [item|list])
+  defp decode_public_key_asn1(bin) do
+    {_, data} = Exmime.Asn1Dynamic.decode_asn1(bin)
+    data
   end
 end
