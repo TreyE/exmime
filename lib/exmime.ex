@@ -5,4 +5,8 @@ defmodule Exmime do
     eci = Exmime.AesBlock.encrypted_content_info(aes_key, aes_iv, data)
     Exmime.EnvelopedData.content_info([recipient_info], eci)
   end
+
+  def decrypt_rsa_aes_cbc(priv_key, data) do
+
+  end
 end
