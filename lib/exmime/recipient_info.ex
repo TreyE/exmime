@@ -18,4 +18,18 @@ defmodule Exmime.RecipientInfo do
       encryptedKey: encrypted_key
     )
   end
+
+  def decode_content_info_recipient_infos(content_info) do
+    content = Exmime.Records.'ContentInfo'(content_info, :content)
+    {_, ris} = Exmime.Records.'EnvelopedData'(content, :recipientInfos)
+    ris
+  end
+
+  def extract_recipient_session_key(rsa_private_key, [r_info|_]) do
+    :public_key.decrypt_private(extract_recipient_info_encrypted_key(r_info), rsa_private_key) 
+  end
+
+  defp extract_recipient_info_encrypted_key(r_info) do
+    Exmime.Records.'RecipientInfo'(r_info, :encryptedKey)
+  end
 end

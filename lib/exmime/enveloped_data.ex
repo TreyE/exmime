@@ -15,4 +15,9 @@ defmodule Exmime.EnvelopedData do
       encryptedContentInfo: encryptedContentInfo
     )
   end
+
+  def decode_content_info_encrypted_content_info(content_info) do
+    content = Exmime.Records.'ContentInfo'(content_info, :content)
+    Exmime.Records.'EnvelopedData'(content, :encryptedContentInfo)
+  end
 end

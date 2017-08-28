@@ -5,6 +5,21 @@ defmodule Exmime.AesBlock do
     defstruct [:key, :last_ciphertext, :remaining_data]
   end
 
+  def provides_algo?(algo_oid) do
+    Enum.member?([:exmime_constants.aes_256_cbc(), :exmime_constants.aes_128_cbc()], algo_oid)
+  end
+
+  def extract_algo_params(eci) do
+    ceai = Exmime.Records.'EncryptedContentInfo'(eci, :contentEncryptionAlgorithm)
+    {:asn1_OPENTYPE, <<_::big-unsigned-integer-size(8), ivec_size :: size(8), iv::binary>>} = Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(ceai, :parameters)
+    iv
+  end
+
+  def decode_aes_block(data, aes_key, params) do
+    :crypto.block_decrypt(:aes_cbc, aes_key, params, data) |>
+      :pkcs7.unpad
+  end
+
   def generate_AES_parameters(key_size) do
     {:crypto.strong_rand_bytes(Kernel.trunc(key_size/8)), :crypto.strong_rand_bytes(16)}
   end
@@ -59,7 +74,7 @@ defmodule Exmime.AesBlock do
     ivec_size = byte_size(ivec)
     Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(
       algorithm: algo_identifier,
-      parameters: {:asn1_OPENTYPE, <<4, ivec_size :: size(8)>> <> ivec}
+      parameters: {:asn1_OPENTYPE, <<4::big-unsigned-integer-size(8), ivec_size :: size(8)>> <> ivec}
     )
   end
 end
