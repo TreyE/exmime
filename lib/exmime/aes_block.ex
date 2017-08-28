@@ -32,7 +32,7 @@ defmodule Exmime.AesBlock do
     nil
   end
 
-  defp aes_256_single_step(%AesBlockState{remaining_data: <<data::size(256), rest>>} = state) do
+  defp aes_256_single_step(%AesBlockState{remaining_data: <<data::size(128), rest>>} = state) do
     key = state.key
     ivec = state.last_ciphertext
     new_ciphertext = :crypto.block_encrypt(:aes_cbc, key, ivec, data)
