@@ -8,6 +8,19 @@ defmodule Exmime.Asn1Dynamic do
     {<<>>, parse_sequence_items(len, rest)}
   end
 
+  def decode_asn1(<<4::unsigned-integer-size(8), 1::unsigned-big-integer-size(1), len::unsigned-big-integer-size(7), rest::binary>>) do
+    {len_val, remaining_data} = read_len_bytes(rest, len)
+    bit_count = len_val * 8
+    <<value::size(bit_count), remaining::binary>> = remaining_data
+    {remaining, value}
+  end
+
+  def decode_asn1(<<4::unsigned-integer-size(8), len::unsigned-big-integer-size(8), rest::binary>>) do
+    bit_count = len * 8
+    <<value::size(bit_count), remaining::binary>> = rest
+    {remaining, value}
+  end
+
   def decode_asn1(<<2::unsigned-integer-size(8), 1::unsigned-big-integer-size(1), len::unsigned-big-integer-size(7), rest::binary>>) do
     {len_val, remaining_data} = read_len_bytes(rest, len)
     bit_count = len_val * 8
