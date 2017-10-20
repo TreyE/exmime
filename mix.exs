@@ -7,6 +7,12 @@ defmodule Exmime.Mixfile do
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     dialyzer: [
+       plt_add_deps: :apps_direct,
+       ignore_warnings: "dialyzer.ignore-warnings",
+       plt_add_apps: [
+         :compiler, :elixir, :kernel, :logger, :stdlib,
+         :public_key, :pkcs7]],
      deps: deps()]
   end
 
