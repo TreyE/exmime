@@ -27,6 +27,20 @@ defmodule ExmimeTest do
     ^data = decoded_data
   end
 
+  test "decode for aes cbc 128 rsa" do
+    {cert_serial, rsa_pubkey_record} = extract_cert_props()
+    data = "A TEST MESSAGE"
+    content_info = Exmime.single_recipient_rsa_aes_cbc(cert_serial, rsa_pubkey_record, 128, data)
+    encoded_content = Exmime.PemEncoder.encode_content_info(content_info)
+    pem_binary = :public_key.pem_encode([encoded_content])
+    [encoded_entry] = :public_key.pem_decode(pem_binary)
+    encrypted_content_info = :public_key.pem_entry_decode(encoded_entry)
+    p_key = read_private_key()
+    decoded_data = Exmime.decrypt_rsa(p_key, encrypted_content_info)
+    IO.inspect decoded_data
+    ^data = decoded_data
+  end
+
   def read_private_key() do
     {:ok, f} = :file.open("example.com.key", [:binary, :read])
     {:ok, f_data} = :file.read(f, 82174)
