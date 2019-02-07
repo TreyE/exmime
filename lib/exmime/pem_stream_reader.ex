@@ -5,7 +5,8 @@ defmodule Exmime.PemStreamReader do
     data_end: nil,
     octet_length: nil,
     skip_size: nil,
-    skip_start: nil
+    skip_start: nil,
+    byte_pos: 0
   ]
 
   @base_64_alphabet [
@@ -33,7 +34,6 @@ defmodule Exmime.PemStreamReader do
                    0 -> 0
                    _ -> skip_found_at - data_start
                  end
-    IO.inspect(total_b64_len)
     octet_size = div((total_b64_len * 3), 4) - b64_bytes_difference
     %__MODULE__{
       data_start: data_start,
@@ -41,9 +41,53 @@ defmodule Exmime.PemStreamReader do
       skip_size: skip_size,
       skip_start: skip_start,
       io: lb_f,
-      octet_length: octet_size
+      octet_length: octet_size,
+      byte_pos: 0
     }
   end
+  end
+
+  def wrap_as_file(stream) do
+    spawn(fn() -> loop(stream) end)
+  end
+
+  defp loop(stream) do
+    receive do
+      {:io_request, from, reply_ref, {:get_chars, :"", n}} ->
+        handle_read_request(from, reply_ref, stream, n)
+      {:file_request, from, reply_ref, {:position, p}} ->
+        handle_position_request(from, reply_ref, stream,p)
+      {:file_request, from, reply_ref, :close} ->
+        send(from, {:file_reply,reply_ref, File.close(stream.io)})
+      a ->
+        IO.inspect(a)
+        loop(stream)
+    end
+  end
+
+  defp handle_read_request(from, reply_ref, stream, n) do
+    case read(stream, n) do
+      {:ok, new_s, data} ->
+          send(from, {:io_reply,reply_ref, data})
+          loop(new_s)
+      :eof ->
+        send(from, {:io_reply, reply_ref, :eof})
+        loop(stream)
+      a ->
+        send(from, {:io_reply, reply_ref, {:error, a}})
+        loop(stream)
+    end
+  end
+
+  defp handle_position_request(from, reply_ref, stream, p) do
+    case position(stream, p) do
+      {:ok, new_s, new_p} ->
+          send(from, {:file_reply,reply_ref, new_p})
+          loop(new_s)
+      a ->
+        send(from, {:file_reply, reply_ref, {:error, a}})
+        loop(stream)
+    end
   end
 
   # We need to calculate the offset including our EOL chars.
@@ -54,6 +98,11 @@ defmodule Exmime.PemStreamReader do
     idx + (row_count * skip_size)
   end
 
+  def map_coords(idx, skip_start, skip_size) do
+    row_count = div(idx, skip_start)
+    {idx + (row_count * skip_size), row_count}
+  end
+
   def b64_data_length(data_start, data_end, skip_start, skip_size) do
     len = data_end - data_start + 1
     total_len = len - (div(len, skip_start + skip_size) * skip_size)
@@ -61,6 +110,10 @@ defmodule Exmime.PemStreamReader do
       0 -> {:ok, total_len}
       a -> {:error, :padding_invalid, a}
     end
+  end
+
+  def map_tritet_for_byte(byte_idx) do
+    {div(byte_idx,3), rem(byte_idx,3)}
   end
 
   def missing_final_byte_count(f, data_start, b64_len, skip_start, skip_size) do
@@ -205,5 +258,72 @@ defmodule Exmime.PemStreamReader do
                 _ -> {:ok, f, start, lb_len}
               end
     end
+  end
+
+  def position(_, index) when index < 0 do
+    {:err, :badarg}
+  end
+
+  def position(%__MODULE__{} = stream, :eof) do
+    {:ok, %__MODULE__{stream | byte_pos: :eof}, :eof}
+  end
+
+  def position(%__MODULE__{} = stream, :bof) do
+    {:ok, %__MODULE__{stream | byte_pos: 0}, 0}
+  end
+
+  def position(%__MODULE__{byte_pos: bp} = stream, :cur) do
+    {:ok, stream, bp}
+  end
+
+  def position(%__MODULE__{octet_length: ol}, index) when index >= 0  and index >= ol do
+    {:err, :badarg}
+  end
+
+  def position(%__MODULE__{octet_length: ol} = stream, index) when index >= 0  and index < ol do
+    {:ok, %__MODULE__{stream | byte_pos: index}, index}
+  end
+
+  def read(%__MODULE__{byte_pos: :eof}, _) do
+    :eof
+  end
+
+  def read(stream, read_size) do
+    suggested_end = (stream.byte_pos + read_size - 1)
+    {byte_end, new_pos} = case (suggested_end >= (stream.octet_length - 1)) do
+                 false -> { suggested_end, suggested_end + 1 }
+                 _ -> {stream.octet_length - 1, :eof}
+               end
+    {start_tritet, bin_offset} = map_tritet_for_byte(stream.byte_pos)
+    {end_tritet, end_bin_offset} = map_tritet_for_byte(byte_end)
+    slice_end = ((end_tritet - start_tritet) * 3) + end_bin_offset
+    tritets = map_tritets(start_tritet, end_tritet, stream.skip_start, stream.skip_size)
+    with(data <- read_and_slice_tritets(stream.io, tritets, stream.data_start, bin_offset, slice_end - bin_offset + 1)) do
+      {:ok, %__MODULE__{stream | byte_pos: new_pos},  data}
+    end
+  end
+
+  def read_and_slice_tritets(io, tritets, data_start, start_tritet_offset, end_offset) do
+    Enum.reduce(tritets, <<>>, fn({o, length}, acc) ->
+      :file.position(io, o + data_start)
+      with <<a::binary>> <- IO.binread(io, length),
+           {:ok, data} <- Base.decode64(a) do
+        acc <> data
+      end
+    end) |>
+      :binary.part(start_tritet_offset, end_offset)
+  end
+
+  defp map_tritets(start_t, end_t, skip_start, skip_len) do
+    Enum.map(Range.new(start_t, end_t), fn(r) ->
+      map_coords(r * 4, skip_start, skip_len)
+    end)
+      |> Enum.chunk_by(fn({index_pos, row}) ->
+           row
+         end)
+      |> Enum.map(fn(group) ->
+           {first_index, _} = Enum.at(group, 0)
+           {first_index, Enum.count(group) * 4}
+         end)
   end
 end
