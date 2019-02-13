@@ -82,7 +82,7 @@ defmodule Exmime.PemStreamReader do
   defp handle_position_request(from, reply_ref, stream, p) do
     case position(stream, p) do
       {:ok, new_s, new_p} ->
-          send(from, {:file_reply,reply_ref, new_p})
+          send(from, {:file_reply,reply_ref, {:ok, new_p}})
           loop(new_s)
       a ->
         send(from, {:file_reply, reply_ref, {:error, a}})
@@ -276,7 +276,11 @@ defmodule Exmime.PemStreamReader do
     {:ok, stream, bp}
   end
 
-  def position(%__MODULE__{octet_length: ol}, index) when index >= 0  and index >= ol do
+  def position(%__MODULE__{octet_length: ol} = stream, index) when index >= 0  and index == ol do
+    {:ok, %__MODULE__{stream| byte_pos: :eof}, :eof}
+  end
+
+  def position(%__MODULE__{octet_length: ol}, index) when index >= 0  and index > ol do
     {:err, :badarg}
   end
 

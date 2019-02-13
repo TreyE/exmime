@@ -6,18 +6,15 @@ defmodule Exmime.AesBlock do
   end
 
   def provides_algo?(algo_oid) do
-    Enum.member?([:exmime_constants.aes_256_cbc(), :exmime_constants.aes_128_cbc()], algo_oid)
+    Enum.member?(Exmime.Aes.CbcAlgo.supported_algos(), algo_oid)
   end
 
   def extract_algo_params(eci) do
-    ceai = Exmime.Records.'EncryptedContentInfo'(eci, :contentEncryptionAlgorithm)
-    {:asn1_OPENTYPE, <<_::big-unsigned-integer-size(8), ivec_size :: size(8), iv::binary>>} = Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(ceai, :parameters)
-    iv
+    Exmime.Aes.CbcAlgo.extract_algo_params(eci)
   end
 
   def decode_aes_block(data, aes_key, params) do
-    :crypto.block_decrypt(:aes_cbc, aes_key, params, data) |>
-      :pkcs7.unpad
+    Exmime.Aes.CbcAlgo.decode_block(data, aes_key, params)
   end
 
   def generate_AES_parameters(key_size) do
@@ -67,10 +64,7 @@ defmodule Exmime.AesBlock do
   end
 
   defp content_encryption_algorithm_identifier(key, ivec) do
-    algo_identifier = case byte_size(key) do
-      32 -> :exmime_constants.aes_256_cbc()
-      _ -> :exmime_constants.aes_128_cbc()
-    end
+    algo_identifier = Exmime.Aes.CbcAlgo.algo_identifier(key)
     ivec_size = byte_size(ivec)
     Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(
       algorithm: algo_identifier,
