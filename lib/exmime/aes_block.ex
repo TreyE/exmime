@@ -13,8 +13,16 @@ defmodule Exmime.AesBlock do
     Exmime.Aes.CbcAlgo.extract_algo_params(eci)
   end
 
-  def decode_aes_block(data, aes_key, params) do
+  def extract_stream_algo_params(eci) do
+    Exmime.Aes.CbcAlgo.extract_stream_algo_params(eci)
+  end
+
+  def decode_block(data, aes_key, params) do
     Exmime.Aes.CbcAlgo.decode_block(data, aes_key, params)
+  end
+
+  def decode_stream(f, start, len, aes_key, params) do
+    Exmime.Aes.CbcAlgo.decode_stream(f, start, len, aes_key, params)
   end
 
   def generate_AES_parameters(key_size) do

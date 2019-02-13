@@ -173,7 +173,8 @@ defmodule Exmime.PemStreamReader do
       <<"-">> -> read_next_pem_header_byte(:in_header_end, f)
       data ->
         case Enum.member?(@base_64_alphabet, data) do
-          false -> read_next_pem_header_byte(:in_header_end, f)
+          false ->
+            read_next_pem_header_byte(:in_header_end, f)
           _ ->
             {:ok, new_pos} = :file.position(f, :cur)
             {:ok, f, new_pos - 1}

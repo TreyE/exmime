@@ -11,8 +11,17 @@ defmodule Exmime do
     eci = Exmime.EnvelopedData.decode_content_info_encrypted_content_info(content_info)
     e_module = Exmime.EncryptedContentInfo.encryption_module(eci)
     encrypted_data = Exmime.EncryptedContentInfo.decode_encrypted_content_info_data(eci)
-    algo_params = e_module.extract_algo_params(eci) 
+    algo_params = e_module.extract_algo_params(eci)
     session_key = Exmime.RecipientInfo.extract_recipient_session_key(priv_key, ris)
-    Exmime.AesBlock.decode_aes_block(encrypted_data, session_key, algo_params)
+    e_module.decode_block(encrypted_data, session_key, algo_params)
+  end
+
+  def decrypt_stream(priv_key, %Exmime.Asn1.EnvelopedData{recipient_infos: [ris|_], encrypted_content_info: eci}) do
+    e_module = Exmime.EncryptedContentInfo.select_algorithm_module(eci.content_encryption_algorithm)
+    algo_params = e_module.extract_stream_algo_params(eci)
+    encrypted_key = ris.encrypted_key
+    session_key = :public_key.decrypt_private(encrypted_key, priv_key)
+    {:file_stream, f, pos, len} = eci.encrypted_content
+    e_module.decode_stream(f, pos, len, session_key, algo_params)
   end
 end
