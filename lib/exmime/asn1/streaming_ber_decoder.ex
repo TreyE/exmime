@@ -17,13 +17,12 @@ defmodule Exmime.Asn1.StreamingBerDecoder do
         :sequence ->
           with {:ok, n_pos} <- :file.position(l_f, :cur),
                {:ok, seq, seq_f} <- decode_sequence(f, n_pos, n_pos + length - 1, []) do
-            check_context_specific(seq, seq_f)
+            {seq, seq_f}
           end
         :set ->
             with {:ok, n_pos} <- :file.position(l_f, :cur),
-                 {:ok, seq, seq_f} <- decode_sequence(f, n_pos, n_pos + length - 1, []),
-                 {set, set_f} = check_context_specific(seq, seq_f) do
-              {MapSet.new(set), set_f}
+                 {:ok, seq, seq_f} <- decode_sequence(f, n_pos, n_pos + length - 1, []) do
+              {MapSet.new(seq), seq_f}
             end
         _ ->
           with {:ok, n_pos} <- :file.position(l_f, :cur),
@@ -40,40 +39,6 @@ defmodule Exmime.Asn1.StreamingBerDecoder do
       false -> {sequence, f}
       _ -> {process_contexts(contexts, sequence, f), f}
     end
-  end
-
-  defp process_contexts(contexts, sequence,f) do
-    pre_contexts = Enum.map(contexts, fn(a) -> a - 1 end)
-    sequence
-     |> Enum.with_index()
-     |> Enum.reduce([], fn({e, idx}, acc) ->
-        case Enum.member?(pre_contexts, idx) do
-          false ->
-            case Enum.member?(contexts, idx) do
-              false -> [e|acc]
-              _ -> [format_context(e, sequence, idx,f) |  acc]
-            end
-          _ -> acc
-        end
-     end)
-     |> Enum.reverse()
-  end
-
-  defp format_context({{:context_specific, t_data}, start, len}, sequence, idx, f) do
-    identifier = Enum.at(sequence, 0)
-    decode_context_type({:contextual_type, identifier, t_data, start, len}, f)
-  end
-
-  defp find_contexts(sequence) do
-    sequence
-      |> Enum.with_index()
-      |> Enum.filter(fn({a, _}) ->
-           case a do
-             {{:context_specific,_},_,_} -> true
-             _ -> false
-           end
-         end)
-      |> Enum.map(fn({_,i}) -> i end)
   end
 
   def split_sequence_elements(f, pos, max_pos, items) when pos > max_pos do
@@ -113,9 +78,13 @@ defmodule Exmime.Asn1.StreamingBerDecoder do
     end
   end
 
+  def decode_object_id(<<>>) do
+    {}
+  end
+
   def decode_object_id(<<first_parts::size(8),rest::binary>>) do
     object_id_large_bits = object_id_next_sets([], [], rest)
-    [div(first_parts, 40),Integer.mod(first_parts,40)|object_id_large_bits]
+    List.to_tuple([div(first_parts, 40),Integer.mod(first_parts,40)|object_id_large_bits])
   end
 
   defp object_id_next_sets([], list, <<>>) do
@@ -281,13 +250,5 @@ defmodule Exmime.Asn1.StreamingBerDecoder do
 
   defp type_specifier({3, constructed, type}) do
     {:private, {3, constructed, type}}
-  end
-
-  defp decode_context_type({:contextual_type, oid,_, start, len} = data, f) do
-    case oid do
-      {:object_identifier, [1, 2, 840, 113549, 1, 7, 3]} ->
-        Exmime.Asn1.EnvelopedData.decode_contextual_type(f, start, len)
-      _ -> data
-    end
   end
 end
