@@ -9,7 +9,7 @@ defmodule Exmime.Asn1.EnvelopedDataTest do
     rem_bytes = rem(byte_size(original_data),16)
     padding_bytes = Exmime.Padding.Pkcs7Padding.provide_padding_of_length(16 - rem_bytes)
     data = original_data <> padding_bytes
-    {cert_serial, rsa_pubkey_record} = extract_cert_props()
+    {cert_serial, rsa_pubkey_record} = Exmime.RsaTestHelpers.extract_cert_props()
     {aes_key, aes_iv} = Exmime.AesBlock.generate_AES_parameters(256)
     {:ok, ceaib} = Exmime.AesBlock.create_content_encryption_algorithm_identifier_binary(:exmime_constants.aes_256_cbc(),aes_iv)
     {eci_len, eci_bh} = Exmime.Asn1.EncryptedContentInfo.create_encrypted_content_info_binary_header(ceaib, byte_size(data))
@@ -33,31 +33,11 @@ defmodule Exmime.Asn1.EnvelopedDataTest do
     {:ok, f} = :file.open("ed_stream_aes_test_file_scratch.pkcs7", [:binary, :read])
     new_stream = Exmime.PemStreamReader.new_from_io(f)
     f_stream = Exmime.PemStreamReader.wrap_as_file(new_stream)
-    p_key = read_private_key()
+    p_key = Exmime.RsaTestHelpers.read_private_key()
     ci = Exmime.Asn1.ContentInfo.decode_stream(f_stream, 0, new_stream.octet_length)
     decoded_stream = Exmime.decrypt_stream(p_key, ci)
     decoded_data = Enum.reduce(decoded_stream, <<>>, fn(e, acc) -> acc <> e end)
     ^original_data = decoded_data
-  end
-
-  def read_private_key() do
-    {:ok, f} = :file.open("example.com.key", [:binary, :read])
-    {:ok, f_data} = :file.read(f, 82174)
-    [entry] = :public_key.pem_decode(f_data)
-    :public_key.pem_entry_decode(entry)
-  end
-
-  def extract_cert_props() do
-    {:ok, f} = :file.open("example.com.crt", [:binary, :read])
-    {:ok, f_data} = :file.read(f, 82174)
-    [entry] = :public_key.pem_decode(f_data)
-    pem_entry = :public_key.pem_entry_decode(entry)
-    cert_serial = Exmime.Certificate.extract_serial_number(pem_entry)
-    [modulus, public_exp] = Exmime.Certificate.extract_rsa_public_key(pem_entry)
-    rsa_pubkey_record = Exmime.Records.'RSAPublicKey'(
-      modulus: modulus,
-      publicExponent: public_exp
-    )
-    {cert_serial, rsa_pubkey_record}
+    File.rm!("ed_stream_aes_test_file_scratch.pkcs7")
   end
 end

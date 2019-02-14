@@ -38,7 +38,7 @@ defmodule Exmime.Certificate do
       s_pki,
       :subjectPublicKey
     )
-    [m, e] = decode_public_key_asn1(pkey)
+    decode_public_key_asn1(pkey)
   end
 
   defp decode_public_key_asn1(bin) do

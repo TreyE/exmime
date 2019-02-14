@@ -33,14 +33,6 @@ defmodule Exmime.Asn1.StreamingBerDecoder do
     end
   end
 
-  defp check_context_specific(sequence, f) do
-    contexts = find_contexts(sequence)
-    case Enum.any?(contexts) do
-      false -> {sequence, f}
-      _ -> {process_contexts(contexts, sequence, f), f}
-    end
-  end
-
   def split_sequence_elements(f, pos, max_pos, items) when pos > max_pos do
     {:ok, Enum.reverse(items), f}
   end
