@@ -25,7 +25,12 @@ defmodule Exmime.Asn1.EnvelopedDataTest do
     der_data = enveloped_data_header <> encrypted_data
     pem_binary = :public_key.pem_encode([{:'ContentInfo', der_data, :not_encrypted}])
     {:ok, out_f} = :file.open("ed_stream_aes_test_file_scratch.pkcs7", [:binary, :write])
-    IO.binwrite(out_f, pem_binary)
+    {:ok, out_f} = :file.open("ed_stream_aes_test_file_scratch.pkcs7", [:binary, :write])
+    psw  = Exmime.PemStreamWriter.new_from_io(out_f, "PKCS7")
+    psw
+      |> Exmime.PemStreamWriter.initialize()
+      |> Exmime.PemStreamWriter.write(der_data)
+      |> Exmime.PemStreamWriter.finish()
     :file.close(out_f)
     {:ok, f} = :file.open("ed_stream_aes_test_file_scratch.pkcs7", [:binary, :read])
     new_stream = Exmime.PemStreamReader.new_from_io(f)
