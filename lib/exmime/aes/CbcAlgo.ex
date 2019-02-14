@@ -19,17 +19,17 @@ defmodule Exmime.Aes.CbcAlgo do
 
   def extract_algo_params(eci) do
     ceai = Exmime.Records.'EncryptedContentInfo'(eci, :contentEncryptionAlgorithm)
-    {:asn1_OPENTYPE, <<_::big-unsigned-integer-size(8), ivec_size :: size(8), iv::binary>>} = Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(ceai, :parameters)
+    {:asn1_OPENTYPE, <<_::big-unsigned-integer-size(8), _ :: size(8), iv::binary>>} = Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(ceai, :parameters)
     iv
   end
 
   def extract_stream_algo_params(eci) do
     ceai = eci.content_encryption_algorithm
-    {:asn1_OPENTYPE, <<_::big-unsigned-integer-size(8), ivec_size :: size(8), iv::binary>>} = Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(ceai, :parameters)
+    {:asn1_OPENTYPE, <<_::big-unsigned-integer-size(8), _ :: size(8), iv::binary>>} = Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(ceai, :parameters)
     iv
   end
 
-  def decode_stream(f, start, len, aes_key, params) do
+  def decode_stream(f, start, _, aes_key, params) do
     with({:ok, _} <- :file.position(f, start)) do
       decoder_stream(f, aes_key, params, 16)
     end

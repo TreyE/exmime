@@ -13,14 +13,10 @@ defmodule Exmime.Asn1.ContentInfoTest do
     {:ok, out_f} = :file.open("ci_decode_test_file_scratch.pkcs7", [:binary, :write])
     IO.binwrite(out_f, pem_binary)
     :file.close(out_f)
+    p_key = read_private_key()
     {:ok, f} = :file.open("ci_decode_test_file_scratch.pkcs7", [:binary, :read])
     new_stream = Exmime.PemStreamReader.new_from_io(f)
     f_stream = Exmime.PemStreamReader.wrap_as_file(new_stream)
-    p_key = read_private_key()
-    ci = Exmime.Asn1.ContentInfo.decode_stream(f_stream, 0, new_stream.octet_length)
-    new_stream = Exmime.PemStreamReader.new_from_io(f)
-    f_stream = Exmime.PemStreamReader.wrap_as_file(new_stream)
-    p_key = read_private_key()
     ci = Exmime.Asn1.ContentInfo.decode_stream(f_stream, 0, new_stream.octet_length)
     decoded_stream = Exmime.decrypt_stream(p_key, ci)
     decoded_data = Enum.reduce(decoded_stream, <<>>, fn(e, acc) -> acc <> e end)
@@ -31,7 +27,7 @@ defmodule Exmime.Asn1.ContentInfoTest do
     {:ok, f} = :file.open("example.com.key", [:binary, :read])
     {:ok, f_data} = :file.read(f, 82174)
     [entry] = :public_key.pem_decode(f_data)
-    pem_entry = :public_key.pem_entry_decode(entry)
+    :public_key.pem_entry_decode(entry)
   end
 
   def extract_cert_props() do

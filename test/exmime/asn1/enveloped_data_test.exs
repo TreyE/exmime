@@ -23,8 +23,6 @@ defmodule Exmime.Asn1.EnvelopedDataTest do
       eci_len
     )
     der_data = enveloped_data_header <> encrypted_data
-    pem_binary = :public_key.pem_encode([{:'ContentInfo', der_data, :not_encrypted}])
-    {:ok, out_f} = :file.open("ed_stream_aes_test_file_scratch.pkcs7", [:binary, :write])
     {:ok, out_f} = :file.open("ed_stream_aes_test_file_scratch.pkcs7", [:binary, :write])
     psw  = Exmime.PemStreamWriter.new_from_io(out_f, "PKCS7")
     psw
@@ -46,7 +44,7 @@ defmodule Exmime.Asn1.EnvelopedDataTest do
     {:ok, f} = :file.open("example.com.key", [:binary, :read])
     {:ok, f_data} = :file.read(f, 82174)
     [entry] = :public_key.pem_decode(f_data)
-    pem_entry = :public_key.pem_entry_decode(entry)
+    :public_key.pem_entry_decode(entry)
   end
 
   def extract_cert_props() do
