@@ -16,6 +16,14 @@ defmodule Exmime.Asn1.EncryptedContentInfo do
     end
   end
 
+  def create_encrypted_content_info_binary_header(content_encryption_algorithm_identifier_binary, encrypted_content_length) do
+    {ec_os_len,ec_os_item} = Exmime.Asn1.StreamingBerEncoder.wrap_item(<<128::integer-size(8)>>,<<>>,encrypted_content_length)
+    ct_oid_binary = Exmime.Asn1.StreamingBerEncoder.encode_object_id(:exmime_constants.data())
+    items = ct_oid_binary <> content_encryption_algorithm_identifier_binary <> ec_os_item
+    item_length = byte_size(ct_oid_binary) + byte_size(content_encryption_algorithm_identifier_binary) + ec_os_len
+    Exmime.Asn1.StreamingBerEncoder.wrap_item(<<16::integer-size(8)>>,items,item_length)
+  end
+
   defp decode_content_encryption_algorithm_identifier({_, s_start, s_len, _, _}, f) do
     with {:ok, _} <- :file.position(f, s_start),
          <<data::binary>> <- IO.binread(f, s_len),

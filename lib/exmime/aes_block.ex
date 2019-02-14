@@ -79,4 +79,13 @@ defmodule Exmime.AesBlock do
       parameters: {:asn1_OPENTYPE, <<4::big-unsigned-integer-size(8), ivec_size :: size(8)>> <> ivec}
     )
   end
+
+  def create_content_encryption_algorithm_identifier_binary(algo_identifier, ivec) do
+    ivec_size = byte_size(ivec)
+    cec = Exmime.Records.'ContentEncryptionAlgorithmIdentifier'(
+      algorithm: algo_identifier,
+      parameters: {:asn1_OPENTYPE, <<4::big-unsigned-integer-size(8), ivec_size :: size(8)>> <> ivec}
+    )
+    :'OTP-PUB-KEY'.encode(:'ContentEncryptionAlgorithmIdentifier', cec)
+  end
 end

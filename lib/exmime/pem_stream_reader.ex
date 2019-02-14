@@ -303,27 +303,30 @@ defmodule Exmime.PemStreamReader do
     {end_tritet, end_bin_offset} = map_tritet_for_byte(byte_end)
     slice_end = ((end_tritet - start_tritet) * 3) + end_bin_offset
     tritets = map_tritets(start_tritet, end_tritet, stream.skip_start, stream.skip_size)
-    with(data <- read_and_slice_tritets(stream.io, tritets, stream.data_start, bin_offset, slice_end - bin_offset + 1)) do
+    with(<<data::binary>> <- read_and_slice_tritets(stream.io, tritets, stream.data_start, bin_offset, slice_end - bin_offset + 1)) do
       {:ok, %__MODULE__{stream | byte_pos: new_pos},  data}
     end
   end
 
   def read_and_slice_tritets(io, tritets, data_start, start_tritet_offset, end_offset) do
-    Enum.reduce(tritets, <<>>, fn({o, length}, acc) ->
+    data = Enum.reduce(tritets, <<>>,fn({o, length}, acc) when is_integer(o) ->
       :file.position(io, o + data_start)
       with <<a::binary>> <- IO.binread(io, length),
            {:ok, data} <- Base.decode64(a) do
         acc <> data
       end
-    end) |>
-      :binary.part(start_tritet_offset, end_offset)
+    end)
+    case data do
+      <<bins::binary>> -> :binary.part(bins, start_tritet_offset, end_offset)
+      a -> a
+    end
   end
 
   defp map_tritets(start_t, end_t, skip_start, skip_len) do
     Enum.map(Range.new(start_t, end_t), fn(r) ->
       map_coords(r * 4, skip_start, skip_len)
     end)
-      |> Enum.chunk_by(fn({index_pos, row}) ->
+      |> Enum.chunk_by(fn({_, row}) ->
            row
          end)
       |> Enum.map(fn(group) ->

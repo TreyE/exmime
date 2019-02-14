@@ -32,4 +32,27 @@ defmodule Exmime.Asn1.RecipientInfo do
       parameters: params
     }
   end
+
+  def create_recipient_info_binary(pub_key, session_key, cert_serial_number) do
+    ek = :public_key.encrypt_public(session_key, pub_key)
+    issuer_and_serial_number = Exmime.Records.'IssuerAndSerialNumber'(
+      issuer: {:rdnSequence, []},
+      serialNumber: cert_serial_number
+    )
+    kea = Exmime.Records.'KeyEncryptionAlgorithmIdentifier'(
+      algorithm: :exmime_constants.rsaEncryption(),
+      parameters: {:asn1_OPENTYPE, <<5, 0>>}
+    )
+    Exmime.Records.'RecipientInfo'(
+      version: :riVer0,
+      encryptedKey: ek,
+      keyEncryptionAlgorithm: kea,
+      issuerAndSerialNumber: issuer_and_serial_number
+    )
+  end
+
+  def create_recipient_info_sequence_binaries(ris) do
+    {:ok, ris_binaries} = :'OTP-PUB-KEY'.encode(:'RecipientInfos', {:riSequence, ris})
+    {byte_size(ris_binaries) + Enum.count(ris), ris_binaries}
+  end
 end

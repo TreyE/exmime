@@ -49,4 +49,17 @@ defmodule Exmime.Asn1.EnvelopedData do
   defp decode_encrypted_content_info({{:sequence, _}, _, _, start, len}, f) do
     Exmime.Asn1.EncryptedContentInfo.decode(f, start, len)
   end
+
+  def create_enveloped_data_header_binary_as_content_info(recipient_info_sequence_binary, ri_binary_len, encrypted_content_info_binary_header, encrypted_content_info_binary_header_len) do
+    total_len_of_en_data_parts = 3 + ri_binary_len + encrypted_content_info_binary_header_len
+    en_data_part_bytes = <<2::integer-size(8),1::integer-size(8),0::integer-size(8)>> <> recipient_info_sequence_binary <> encrypted_content_info_binary_header
+    {seq_len, seq_bytes} = Exmime.Asn1.StreamingBerEncoder.wrap_item(<<16::integer-size(8)>>, en_data_part_bytes, total_len_of_en_data_parts)
+    {context_seq_len, context_seq_bytes} = Exmime.Asn1.StreamingBerEncoder.wrap_item(<<160::integer-size(8)>>,seq_bytes, seq_len)
+    encoded_object_id = Exmime.Asn1.StreamingBerEncoder.encode_object_id(:exmime_constants.envelopedData())
+    ci_body_bytes = encoded_object_id <> context_seq_bytes
+    ci_body_length = byte_size(encoded_object_id) + context_seq_len
+    {_, full_content_info} = Exmime.Asn1.StreamingBerEncoder.wrap_item(<<48::integer-size(8)>>, ci_body_bytes, ci_body_length)
+    full_content_info
+  end
+
 end
