@@ -35,8 +35,13 @@ defmodule Exmime.Asn1.EnvelopedDataTest do
     f_stream = Exmime.PemStreamReader.wrap_as_file(new_stream)
     p_key = Exmime.RsaTestHelpers.read_private_key()
     ci = Exmime.Asn1.ContentInfo.decode_stream(f_stream, 0, new_stream.octet_length)
-    decoded_stream = Exmime.decrypt_stream(p_key, ci)
-    decoded_data = Enum.reduce(decoded_stream, <<>>, fn(e, acc) -> acc <> e end)
+    message_recipient_decoding_instructions = %Exmime.MessageRecipients.DecodingInstructions{
+      private_key: p_key,
+      serial_number: cert_serial,
+      issuer: {:rdnSequence, []}
+    }
+    {:ok, decoding_stream} = Exmime.Asn1.EnvelopedData.decrypt_stream(ci, message_recipient_decoding_instructions)
+    decoded_data = Enum.reduce(decoding_stream, <<>>, fn(e, acc) -> acc <> e end)
     ^original_data = decoded_data
     File.rm!("ed_stream_aes_test_file_scratch.pkcs7")
   end

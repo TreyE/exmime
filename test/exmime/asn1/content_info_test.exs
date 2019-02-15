@@ -18,7 +18,12 @@ defmodule Exmime.Asn1.ContentInfoTest do
     new_stream = Exmime.PemStreamReader.new_from_io(f)
     f_stream = Exmime.PemStreamReader.wrap_as_file(new_stream)
     ci = Exmime.Asn1.ContentInfo.decode_stream(f_stream, 0, new_stream.octet_length)
-    decoded_stream = Exmime.decrypt_stream(p_key, ci)
+    message_recipient_decoding_instructions = %Exmime.MessageRecipients.DecodingInstructions{
+      private_key: p_key,
+      serial_number: cert_serial,
+      issuer: {:rdnSequence, []}
+    }
+    {:ok, decoded_stream} = Exmime.Asn1.EnvelopedData.decrypt_stream(ci, message_recipient_decoding_instructions)
     decoded_data = Enum.reduce(decoded_stream, <<>>, fn(e, acc) -> acc <> e end)
     ^data = decoded_data
     File.rm!("ci_decode_test_file_scratch.pkcs7")

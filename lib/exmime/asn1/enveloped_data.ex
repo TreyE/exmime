@@ -62,4 +62,24 @@ defmodule Exmime.Asn1.EnvelopedData do
     full_content_info
   end
 
+  def decrypt_stream(ed, message_recipient_decoding_instructions) do
+    with(%Exmime.Asn1.RecipientInfo{encrypted_key: ek} <- match_recipient_info(ed, message_recipient_decoding_instructions)) do
+      eci = ed.encrypted_content_info
+      e_module = Exmime.EncryptedContentInfo.select_algorithm_module(eci.content_encryption_algorithm)
+      algo_params = e_module.extract_stream_algo_params(eci)
+      session_key = :public_key.decrypt_private(ek, message_recipient_decoding_instructions.private_key)
+      {:file_stream, f, pos, len} = eci.encrypted_content
+      {:ok, e_module.decode_stream(f, pos, len, session_key, algo_params)}
+    end
+  end
+
+  defp match_recipient_info(ed, message_recipient_decoding_instructions) do
+    Enum.find(
+            ed.recipient_infos,
+            {:error, :no_matching_recepient_info},
+            fn(ri_record) ->
+              (ri_record.issuer_and_serial_number.serial_number == message_recipient_decoding_instructions.serial_number) &&
+                (ri_record.issuer_and_serial_number.issuer == message_recipient_decoding_instructions.issuer)
+            end)
+  end
 end
