@@ -65,7 +65,7 @@ defmodule Exmime.Asn1.EnvelopedData do
   def decrypt_stream(ed, message_recipient_decoding_instructions) do
     with(%Exmime.Asn1.RecipientInfo{encrypted_key: ek} <- match_recipient_info(ed, message_recipient_decoding_instructions)) do
       eci = ed.encrypted_content_info
-      e_module = Exmime.EncryptedContentInfo.select_algorithm_module(eci.content_encryption_algorithm)
+      {:ok, e_module} = Exmime.EncryptionAlgorithms.block_decryption_module(eci.content_encryption_algorithm)
       algo_params = e_module.extract_stream_algo_params(eci)
       session_key = :public_key.decrypt_private(ek, message_recipient_decoding_instructions.private_key)
       {:file_stream, f, pos, len} = eci.encrypted_content

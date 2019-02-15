@@ -6,16 +6,17 @@ defmodule Exmime.Asn1.EnvelopedDataTest do
 
   test "encode encrypted enveloped data using RSA and AES-CBC-256" do
     original_data = "A TEST MESSAGE 1\nA TEST MESSAGE 2\nA TEST MESSAGE 3"
-    rem_bytes = rem(byte_size(original_data),16)
-    padding_bytes = Exmime.Padding.Pkcs7Padding.provide_padding_of_length(16 - rem_bytes)
-    data = original_data <> padding_bytes
     {cert_serial, rsa_pubkey_record} = Exmime.RsaTestHelpers.extract_cert_props()
-    {aes_key, aes_iv} = Exmime.AesBlock.generate_AES_parameters(256)
-    {:ok, ceaib} = Exmime.AesBlock.create_content_encryption_algorithm_identifier_binary(:exmime_constants.aes_256_cbc(),aes_iv)
+    {:ok, e_mod} = Exmime.EncryptionAlgorithms.block_encryption_module(:aes_cbc256)
+    padding_bytes = e_mod.padding_data(byte_size(original_data))
+    data = original_data <> padding_bytes
+    aes_key = e_mod.generate_key()
+    aes_iv = e_mod.generate_parameters()
+    {:ok, ceaib} = e_mod.create_content_encryption_algorithm_identifier_binary(aes_iv)
     {eci_len, eci_bh} = Exmime.Asn1.EncryptedContentInfo.create_encrypted_content_info_binary_header(ceaib, byte_size(data))
     ri_info_binary = Exmime.Asn1.RecipientInfo.create_recipient_info_binary(rsa_pubkey_record, aes_key, cert_serial)
     {ri_binary_len, ri_binary} = Exmime.Asn1.RecipientInfo.create_recipient_info_sequence_binaries([ri_info_binary])
-    encrypted_data = :crypto.block_encrypt(:aes_cbc256, aes_key, aes_iv, data)
+    encrypted_data = e_mod.block_encrypt(aes_key, aes_iv, data)
     enveloped_data_header = Exmime.Asn1.EnvelopedData.create_enveloped_data_header_binary_as_content_info(
       ri_binary,
       ri_binary_len,
