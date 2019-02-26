@@ -1,6 +1,9 @@
 defmodule Exmime.Aes.CbcCommon do
-  def generate_parameters() do
-    :crypto.strong_rand_bytes(16)
+  def generate_parameters(session_key) do
+    case :crypto.strong_rand_bytes(16) do
+      ^session_key -> generate_parameters(session_key)
+      a -> a
+    end
   end
 
   def split_and_return_without_padding(<<>>) do

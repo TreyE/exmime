@@ -11,7 +11,7 @@ defmodule Exmime.Asn1.EnvelopedDataTest do
     padding_bytes = e_mod.padding_data(byte_size(original_data))
     data = original_data <> padding_bytes
     aes_key = e_mod.generate_key()
-    aes_iv = e_mod.generate_parameters()
+    aes_iv = e_mod.generate_parameters(aes_key)
     {:ok, ceaib} = e_mod.create_content_encryption_algorithm_identifier_binary(aes_iv)
     {eci_len, eci_bh} = Exmime.Asn1.EncryptedContentInfo.create_encrypted_content_info_binary_header(ceaib, byte_size(data))
     ri_info_binary = Exmime.Asn1.RecipientInfo.create_recipient_info_binary(rsa_pubkey_record, aes_key, cert_serial)

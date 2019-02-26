@@ -94,8 +94,10 @@ defmodule Exmime.PemStreamReader do
   # Basically this is the same as a two dimentional array stored
   # in packed one-dimensional mapping.
   def map_pos(idx, skip_start, skip_size) do
-    row_count = div(idx, skip_start)
-    idx + (row_count * skip_size)
+    Exmime.B64FileStreaming.map_offset(idx, skip_start, skip_size)
+  end
+  def map_coords(idx, 0, _) do
+    {idx, 0}
   end
 
   def map_coords(idx, skip_start, skip_size) do
@@ -113,7 +115,7 @@ defmodule Exmime.PemStreamReader do
   end
 
   def map_tritet_for_byte(byte_idx) do
-    {div(byte_idx,3), rem(byte_idx,3)}
+    Exmime.B64FileStreaming.map_tritet_for_offset(byte_idx)
   end
 
   def missing_final_byte_count(f, data_start, b64_len, skip_start, skip_size) do

@@ -9,8 +9,8 @@ defmodule Exmime.Aes.Cbc256 do
     Exmime.AesBlock.create_content_encryption_algorithm_identifier_binary(:exmime_constants.aes_256_cbc(),params)
   end
 
-  def generate_parameters() do
-    Exmime.Aes.CbcCommon.generate_parameters()
+  def generate_parameters(session_key) do
+    Exmime.Aes.CbcCommon.generate_parameters(session_key)
   end
 
   def generate_key() do
